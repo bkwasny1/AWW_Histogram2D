@@ -1,0 +1,14 @@
+Przy nowym projekcie / zmianie w Cmake pierwsze w cmd:
+
+cmake -G "MSYS Makefiles" ^
+  -DCMAKE_MAKE_PROGRAM="C:/msys64/usr/bin/make.exe" ^
+  -DCMAKE_C_COMPILER="C:/msys64/mingw64/bin/gcc.exe" ^
+  -DCMAKE_CXX_COMPILER="C:/msys64/mingw64/bin/g++.exe" ^
+  .
+
+
+Pozniej w MinGW
+
+cd "D:\Projekt\OpenCL"
+make
+D:/Projekt/OpenCL/bin/x86_64/Release/Histogram.exe
