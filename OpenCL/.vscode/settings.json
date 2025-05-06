@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.ino": "cpp",
         "xlocale": "cpp",
         "atomic": "cpp",
         "bit": "cpp",
@@ -50,6 +51,23 @@
         "xmemory": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "array": "cpp",
+        "string_view": "cpp",
+        "cstdarg": "cpp",
+        "cwctype": "cpp",
+        "deque": "cpp",
+        "map": "cpp",
+        "unordered_map": "cpp",
+        "algorithm": "cpp",
+        "functional": "cpp",
+        "memory_resource": "cpp",
+        "numeric": "cpp",
+        "random": "cpp",
+        "iomanip": "cpp",
+        "numbers": "cpp",
+        "sstream": "cpp",
+        "chrono": "cpp",
+        "ratio": "cpp"
     }
 }

@@ -1,11 +1,7 @@
 __constant sampler_t imageSampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_LINEAR; 
 
-__kernel void rgb2hsv(__read_only image2d_t inputImage, __write_only image2d_t outputImage)
+uint4 rgbToHsv(uint4 rgba)
 {
-    int2 coord = (int2)(get_global_id(0), get_global_id(1));
-
-    uint4 rgba = read_imageui(inputImage, imageSampler, coord);
-
     float r = (float)rgba.x / 255.0f;
     float g = (float)rgba.y / 255.0f;
     float b = (float)rgba.z / 255.0f;
@@ -33,34 +29,37 @@ __kernel void rgb2hsv(__read_only image2d_t inputImage, __write_only image2d_t o
     // Skalowanie do podanych zakresów:
     uint H = (uint)(h / 2.0f);         // [0,180]
     uint S = (uint)(s * 255.0f);       // [0,255]
-    float V = maxC;                    // [0,1]
-
-    write_imageui(outputImage, coord, (uint4)(H, S, (uint)(V * 255.0f), 255));
+    uint V = (uint)(maxC*255.f);       // [0,255]
+    return (uint4)(H,S,V,255);
 }
 
-
-
-__kernel void hsvHistogram(__read_only image2d_t hsvImage,
-                           __global uint *histogram,
-                           const int width,
-                           const int height,
-                           const int hBins,
-                           const int sBins)
+uint calculateCoordOfHist2D(uint4 HSV, const uint hBins, const uint sBins )
 {
-    int2 pos = (int2)(get_global_id(0), get_global_id(1));
-    if (pos.x >= width || pos.y >= height)
-        return;
-
-    uint4 pixel = read_imageui(hsvImage, imageSampler, pos);
-    uchar h = pixel.x; // 0–179
-    uchar s = pixel.y; // 0–255
-
-    int hIdx = (int)((float)h * (float)(hBins) / 180.0f);
-    int sIdx = (int)((float)s * (float)(sBins) / 256.0f);
+    uint h = HSV.x; // 0–179
+    uint s = HSV.y; // 0–255
+    uint hIdx = (uint)((float)h * (float)(hBins) / 180.0f);
+    uint sIdx = (uint)((float)s * (float)(sBins) / 256.0f);
     if (hIdx >= hBins) hIdx = hBins - 1;
     if (sIdx >= sBins) sIdx = sBins - 1;
 
-    int idx = hIdx * sBins + sIdx;
+    uint idx = hIdx * sBins + sIdx;
+    return idx;
 
-    atomic_inc(&histogram[idx]);
+}
+
+__kernel void histogram2D(__read_only image2d_t inputImage, __write_only image2d_t outputImage,__global uint* outputHist , const uint width, const uint height, const uint hBin, const uint sBin)
+{
+    int2 coord = (int2)(get_global_id(0), get_global_id(1));
+    if(coord.x >= width || coord.y >= height)
+    {
+	    return;
+    }
+    uint4 rgba = read_imageui(inputImage, imageSampler, coord);
+
+    uint4 HSV = rgbToHsv(rgba);
+    uint idx = calculateCoordOfHist2D(HSV,hBin,sBin);
+
+    write_imageui(outputImage, coord, HSV); //Zapis HSV jako wyjście
+
+    atomic_inc(&outputHist[idx]);
 }

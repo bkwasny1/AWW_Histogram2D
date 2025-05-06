@@ -1,3 +1,0 @@
-D:/Projekt/OpenCL/CMakeFiles/Histogram.dir
-D:/Projekt/OpenCL/CMakeFiles/edit_cache.dir
-D:/Projekt/OpenCL/CMakeFiles/rebuild_cache.dir

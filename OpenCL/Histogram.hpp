@@ -1,5 +1,4 @@
-#ifndef HISTOGRAM_H_
-#define HISTOGRAM_H_
+#pragma once
 
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 #include <CL/cl.hpp>
@@ -12,11 +11,8 @@
 
 #define SAMPLE_VERSION "HSV-CONVERSION-1.0"
 #define INPUT_IMAGE "input.bmp"
-#define OUTPUT_IMAGE "output.bmp"
-#define GROUP_SIZE 256
-
-#define H_BINS 180
-#define S_BINS 256
+#define OUTPUT_IMAGE "outputHSV.bmp"
+#define OUTPUT_HIST "outputHist2D.bmp"
 
 using namespace appsdk;
 
@@ -24,10 +20,11 @@ class Histogram
 {
     cl_uchar4* inputImageData;
     cl_uchar4* outputImageData;
+    std::vector<unsigned int> outputBufferHistData;
 
     cl::Context context;
     std::vector<cl::Device> devices;
-    std::vector<cl::Device> device;
+    cl::Device device;
     std::vector<cl::Platform> platforms;
     cl::Image2D inputImage2D;
     cl::Image2D outputImage2D;
@@ -41,25 +38,21 @@ class Histogram
     cl_uint width;
     cl_uint height;
     cl_bool byteRWSupport;
-    size_t kernelWorkGroupSize;
-    size_t blockSizeX;
-    size_t blockSizeY;
-    int iterations;
-    int imageSupport;
+    size_t maxWorkGroupSizeForDevice;
+    size_t maxWorkGroupSizeForKernel;
+    cl_uint H_BINS;
+    cl_uint S_BINS;
+    bool outHsv;
 
 public:
     CLCommandArgs* sampleArgs;
 
-    Histogram()
-        : inputImageData(NULL), outputImageData(NULL), byteRWSupport(true)
+    Histogram(size_t H_BINS, size_t S_BINS, bool outHsv)
+        : inputImageData(NULL), outputImageData(NULL), byteRWSupport(true), H_BINS(H_BINS), S_BINS(S_BINS), outHsv(outHsv)
     {
         sampleArgs = new CLCommandArgs();
         pixelSize = sizeof(uchar4);
         pixelData = NULL;
-        blockSizeX = GROUP_SIZE;
-        blockSizeY = 1;
-        iterations = 1;
-        imageSupport = 0;
     }
 
     ~Histogram() {}
@@ -71,6 +64,8 @@ public:
     int setup();
     int run();
     int cleanup();
+    void setMaxNumberOfWorkGroup();
+    auto countGlobalAndLocalSize();
+    void createHistogramOutput();
+    int saveHistogramAsImage(const std::string& filename);
 };
-
-#endif // HISTOGRAM_H_

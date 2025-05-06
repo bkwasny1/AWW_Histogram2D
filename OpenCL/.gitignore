@@ -1,0 +1,6 @@
+CMakeFiles/
+bin/x86_64/Release/*.bmp
+*.bmp
+*.cmake
+Makefile
+CMakeCache.txt
