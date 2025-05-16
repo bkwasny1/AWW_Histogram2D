@@ -17,7 +17,11 @@
 
 set( SAMPLE_NAME Histogram )
 set( SOURCE_FILES Histogram.cpp Converter.cpp)
-set( EXTRA_FILES Histogram_Kernels.cl input.bmp )
+set( EXTRA_FILES Histogram_Kernels.cl input.bmp input.tif )
+set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV/x64/mingw/staticlib")
+find_package(OpenCV REQUIRED)
+message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
+
 
 ############################################################################
 
@@ -110,8 +114,8 @@ set( ADDITIONAL_LIBRARIES "" )
 
 file(GLOB INCLUDE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp" "${CMAKE_CURRENT_SOURCE_DIR}/*.h" )
 include_directories( ${OPENCL_INCLUDE_DIRS} ../../../../../include/SDKUtil $ENV{AMDAPPSDKROOT}/include/SDKUtil )
-include_directories("C:/Users/kwasn/AMD APP SDK/3.0/include/SDKUtil")
 add_executable( ${SAMPLE_NAME} ${SOURCE_FILES} ${INCLUDE_FILES} ${EXTRA_FILES})
+target_include_directories(${SAMPLE_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS})
 
 # gcc/g++ specific compile options
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
@@ -149,7 +153,11 @@ set_target_properties( ${SAMPLE_NAME} PROPERTIES
                         COMPILE_FLAGS ${COMPILER_FLAGS}
                         LINK_FLAGS ${LINKER_FLAGS}
                      )
-target_link_libraries( ${SAMPLE_NAME} ${OPENCL_LIBRARIES} ${ADDITIONAL_LIBRARIES} )
+target_link_libraries(${SAMPLE_NAME}
+    ${OPENCL_LIBRARIES}
+    ${OpenCV_LIBS}
+    ${ADDITIONAL_LIBRARIES}
+)
 
 # Set output directory to bin
 if( MSVC )

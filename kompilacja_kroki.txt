@@ -12,3 +12,8 @@ Pozniej w MinGW
 cd "D:\Projekt\OpenCL"
 make
 D:/Projekt/OpenCL/bin/x86_64/Release/Histogram.exe
+
+
+Tworzenie Cmake (OpenCv):
+ - Pobierz OpenCv i rozpakuje w folderze OPENCL
+!!! Gdyby były problemy sprawdź ścieżke w CmakeFile.txt:21 !!!

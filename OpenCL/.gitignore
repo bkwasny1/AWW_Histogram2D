@@ -1,6 +1,15 @@
 CMakeFiles/
 bin/x86_64/Release/*.bmp
 *.bmp
+*.tif
 *.cmake
+*.dll
 Makefile
 CMakeCache.txt
+OpenCV/**/
+OpenCV/LICENSE
+OpenCV/OpenCVConfig-version.cmake
+OpenCV/OpenCVConfig.cmake
+OpenCV/setup_vars_opencv4.cmd
+*.exe
+Makefile

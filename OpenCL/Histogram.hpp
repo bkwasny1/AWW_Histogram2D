@@ -2,6 +2,7 @@
 
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 #include <CL/cl.hpp>
+#include <opencv2/opencv.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -10,8 +11,9 @@
 #include "SDKBitMap.hpp"
 
 #define SAMPLE_VERSION "HSV-CONVERSION-1.0"
-#define INPUT_IMAGE "input.bmp"
+#define INPUT_IMAGE "/input"
 #define OUTPUT_IMAGE "outputHSV.bmp"
+#define OUTPUT_IMAGE_TIF "outputHSV.tif"
 #define OUTPUT_HIST "outputHist2D.bmp"
 
 using namespace appsdk;
@@ -33,6 +35,7 @@ class Histogram
     cl::Kernel kernel;
     cl::Buffer histogramBuffer;
     SDKBitMap inputBitmap;
+    cv::Mat imageRGB;
     uchar4* pixelData;
     cl_uint pixelSize;
     cl_uint width;
@@ -43,12 +46,15 @@ class Histogram
     cl_uint H_BINS;
     cl_uint S_BINS;
     bool outHsv;
+    bool readBmp;
 
 public:
     CLCommandArgs* sampleArgs;
 
-    Histogram(size_t H_BINS, size_t S_BINS, bool outHsv)
-        : inputImageData(NULL), outputImageData(NULL), byteRWSupport(true), H_BINS(H_BINS), S_BINS(S_BINS), outHsv(outHsv)
+    Histogram(size_t H_BINS, size_t S_BINS, bool outHsv, bool readBmp)
+        : inputImageData(NULL), outputImageData(NULL),
+          byteRWSupport(true), H_BINS(H_BINS), S_BINS(S_BINS),
+          outHsv(outHsv), readBmp(readBmp)
     {
         sampleArgs = new CLCommandArgs();
         pixelSize = sizeof(uchar4);
@@ -57,7 +63,7 @@ public:
 
     ~Histogram() {}
 
-    int readInputImage(std::string inputImageName);
+    int readInputImage();
     int writeOutputImage(std::string outputImageName);
     int setupCL();
     int runCLKernels();
@@ -68,4 +74,8 @@ public:
     auto countGlobalAndLocalSize();
     void createHistogramOutput();
     int saveHistogramAsImage(const std::string& filename);
+
+private:
+    int readInputImageTiff(const std::string& path);
+    int readInputImageBmp(const std::string& path);
 };

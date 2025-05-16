@@ -9,27 +9,64 @@
 #include "stb_image_write.h"
 #include "Converter.hpp"
 #include <chrono>
+#include <optional>
 
-
-int Histogram::readInputImage(std::string inputImageName)
+int Histogram::readInputImageTiff(const std::string& path)
 {
+    std::string inputImageName = path + std::string(".tif");
+    cv::Mat image = cv::imread(inputImageName, cv::IMREAD_UNCHANGED);
+    cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGBA);
+    if (image.empty()) {
+        return SDK_FAILURE;
+    }
+    height = image.rows;
+    width = image.cols;
+    return SDK_SUCCESS;
+}
+
+int Histogram::readInputImageBmp(const std::string& path)
+{
+    std::string inputImageName = path + std::string(".bmp");
     inputBitmap.load(inputImageName.c_str());
     if (!inputBitmap.isLoaded())
     {
-        std::cout << "Failed to load input image!" << std::endl;
         return SDK_FAILURE;
     }
 
     height = inputBitmap.getHeight();
     width = inputBitmap.getWidth();
+    pixelData = inputBitmap.getPixels();
+    if (!pixelData) return SDK_FAILURE;
+    return SDK_SUCCESS;
+}
 
+
+int Histogram::readInputImage()
+{
+
+    std::string path = getPath() + INPUT_IMAGE;
+    if(not readBmp)
+    {
+        if(readInputImageTiff(path) == SDK_FAILURE) return SDK_FAILURE;
+    }
+    else
+    {
+        if(readInputImageBmp(path) == SDK_FAILURE) return SDK_FAILURE;
+    }
+    
     inputImageData = (cl_uchar4*)malloc(width * height * sizeof(cl_uchar4));
     outputImageData = (cl_uchar4*)malloc(width * height * sizeof(cl_uchar4));
     memset(outputImageData, 0, width * height * pixelSize);
 
-    pixelData = inputBitmap.getPixels();
-    if (!pixelData) return SDK_FAILURE;
-    memcpy(inputImageData, pixelData, width * height * pixelSize);
+    if(not readBmp)
+    {
+        std::memcpy(inputImageData, imageRGB.data, width * height * sizeof(cl_uchar4));
+    }
+    else
+    {
+        memcpy(inputImageData, pixelData, width * height * pixelSize);
+    }
+    
 
     return SDK_SUCCESS;
 }
@@ -43,8 +80,17 @@ void Histogram::createHistogramOutput()
 
 int Histogram::writeOutputImage(std::string outputImageName)
 {
-    memcpy(pixelData, outputImageData, width * height * pixelSize);
-    return inputBitmap.write(outputImageName.c_str()) ? SDK_SUCCESS : SDK_FAILURE;
+    if(not readBmp)
+    {
+        cv::Mat output(height, width, CV_8UC4, outputImageData);
+        cv::cvtColor(output, output, cv::COLOR_RGBA2BGRA);
+        return cv::imwrite(OUTPUT_IMAGE_TIF, output) ? SDK_SUCCESS : SDK_FAILURE;
+    }
+    else
+    {
+        memcpy(pixelData, outputImageData, width * height * pixelSize);
+        return inputBitmap.write(outputImageName.c_str()) ? SDK_SUCCESS : SDK_FAILURE;
+    }
 }
 
 void Histogram::setMaxNumberOfWorkGroup()
@@ -159,9 +205,9 @@ int Histogram::runCLKernels()
 
 int Histogram::setup()
 {
-    std::string path = getPath() + INPUT_IMAGE;
+    
     createHistogramOutput();
-    return readInputImage(path) == SDK_SUCCESS && setupCL() == SDK_SUCCESS ? SDK_SUCCESS : SDK_FAILURE;
+    return readInputImage() == SDK_SUCCESS && setupCL() == SDK_SUCCESS ? SDK_SUCCESS : SDK_FAILURE;
 }
 
 int Histogram::run()
@@ -181,6 +227,7 @@ struct ParsedArgs
     size_t H_BINS = 0;
     size_t S_BINS = 0;
     bool outHsv = false;
+    bool readBmp = false;
 };
 
 int parseArgument(ParsedArgs& parseArgs, int argc, char * argv[])
@@ -189,10 +236,11 @@ int parseArgument(ParsedArgs& parseArgs, int argc, char * argv[])
         {"H_BINS", required_argument, nullptr, 'H'},
         {"S_BINS", required_argument, nullptr, 'S'},
         {"HSV", no_argument, nullptr, 'r'},
+        {"BMP", no_argument, nullptr, 'B'},
         {nullptr, 0, nullptr, 0}         
     };
     int opt;
-    while ((opt = getopt_long(argc, argv, "H:S:r", long_options, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, argv, "H:S:r:B", long_options, nullptr)) != -1) {
         switch (opt) {
             case 'H':
                 parseArgs.H_BINS = std::stoi(optarg);
@@ -206,6 +254,10 @@ int parseArgument(ParsedArgs& parseArgs, int argc, char * argv[])
                 parseArgs.outHsv = true;
                 std::cout << "HSV opcja wlaczona." << std::endl;
                 break;
+            case 'B':
+                parseArgs.readBmp = true;
+                std::cout << "Nastapi proba odczytu input.bmp" << std::endl;
+                break;
             case '?':
                 std::cerr << "Nieznana opcja lub brak wymaganych argumentow." << std::endl;
                 return SDK_FAILURE;
@@ -217,11 +269,13 @@ int parseArgument(ParsedArgs& parseArgs, int argc, char * argv[])
     return SDK_SUCCESS;
 }
 
+
+
 int main(int argc, char * argv[])
 {
     ParsedArgs parsedArgs;
     if (parseArgument(parsedArgs, argc, argv) != SDK_SUCCESS) return SDK_FAILURE;
-    Histogram clHistogram{parsedArgs.H_BINS, parsedArgs.S_BINS,parsedArgs.outHsv};
+    Histogram clHistogram{parsedArgs.H_BINS, parsedArgs.S_BINS,parsedArgs.outHsv, parsedArgs.readBmp};
     if (clHistogram.setup() != SDK_SUCCESS) return SDK_FAILURE;
     if (clHistogram.run() != SDK_SUCCESS) return SDK_FAILURE;
     if (clHistogram.cleanup() != SDK_SUCCESS) return SDK_FAILURE;
