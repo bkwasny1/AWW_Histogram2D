@@ -14,6 +14,26 @@ make
 D:/Projekt/OpenCL/bin/x86_64/Release/Histogram.exe
 
 
-Tworzenie Cmake (OpenCv):
- - Pobierz OpenCv i rozpakuje w folderze OPENCL
-!!! Gdyby były problemy sprawdź ścieżke w CmakeFile.txt:21 !!!
+----------------------Kompilacja statycznych bibliotek OpenCV------------------------
+
+- sprawdź czy masz zainstalowane Mingw - CMD: where mingw32-make lub mingw32-make --version
+- sprawdź czy masz zainstalowanego Cmake - CMD: where cmake lub cmake --version
+- z poziomu CMD uruchom skrypt: install_opnecv.bat z folderu OpenCV_Install
+
+!!! może pojawić się problem z długością ścieżki. Jeżeli istalacja się nie powiedzie przkopiuj krypt np do      !!!
+!!! folderu na pulpicie a następnie uruchom. Gdy instalacja się powiedzie w innym folderze wówczas przekopiuj   !!!
+!!! zawartość folderu "OpenCV_TO_COPY" do folderu "OpenCV" w repozytorium                                       !!!
+
+
+----------------------Budowanie plików CmakeFile------------------------
+cmake -G "MinGW Makefiles"
+
+----------------------Kompilacja projektu------------------------
+mingw32-make
+
+----------------------Uruchamianie Apliakcji------------------------
+- wywołaj plik .\bin\x86_64\Release\Histogram.exe z folderu \bin\x86_64\Release w repozytorium
+
+!!! parametryzacja została opisana w pliku Dokumentacja.txt !!! 
+
+

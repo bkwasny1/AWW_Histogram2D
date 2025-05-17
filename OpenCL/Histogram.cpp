@@ -137,23 +137,75 @@ int Histogram::saveHistogramAsImage(const std::string& filename)
     return stbi_write_bmp(filename.c_str(), width, height, channels, image.data());
 }
 
+int Histogram::writeToConsoleAvailabeComputeDevice()
+{
+    std::clog<<"Dostepne urzadzenia obliczeniowe: "<<std::endl;
+    std::clog <<"  - GPU"<< std::endl;
+    std::clog <<"  - CPU"<< std::endl<< std::endl;
+
+
+    if(selectedDevice == "GPU")
+    {
+        std::clog <<"Wybrano: GPU"<< std::endl<< std::endl;
+        return SDK_SUCCESS;
+    }
+    else if(selectedDevice == "CPU")
+    {
+        std::clog <<"Wybrano: CPU"<< std::endl<< std::endl;
+        return SDK_SUCCESS;
+    }
+    else
+    {
+        std::cerr<<"ERROR: Brak wybranego urzadzenia: dostepne CPU oraz GPU"<< std::endl;
+        return SDK_FAILURE;
+    } 
+}
+
+int Histogram::writeToConsoleAvailabeDevice()
+{
+    bool isSelected{false};
+    std::map<std::string, uint8_t> version{{"GPU", CL_DEVICE_TYPE_GPU}, {"CPU", CL_DEVICE_TYPE_CPU}};
+    for(const auto& [key, value] : version)
+    {
+        std::clog<<"Dostepne urzadzenia "<<key<<": "<<std::endl;
+        size_t i{0};
+        for (const auto& platform : platforms) {
+            std::vector<cl::Device> allDevices;
+            platform.getDevices(value, &allDevices);
+            
+            for (const auto& dev : allDevices) {
+                std::string deviceName = dev.getInfo<CL_DEVICE_NAME>();
+                std::clog << "  " << i << ": " << deviceName << std::endl;
+                if(selectedDevice == key and selectedPlatform == i)
+                {
+                    devices = allDevices;
+                    device = dev;
+                    context = cl::Context(device);
+                    isSelected = true;
+                }
+                i++;
+            }
+        }
+        std::clog << std::endl;
+    }
+    if(isSelected) return SDK_SUCCESS;
+    std::cerr << "Brak urzadzenia OpenCL!" << std::endl;
+    return SDK_FAILURE;
+}
+
 int Histogram::setupCL()
 {
     cl_int err;
     cl::Platform::get(&platforms);
     if(platforms.empty()){
-        std::cerr << "Brak dostępnych platform OpenCL!" << std::endl;
-        return SDK_FAILURE;
-    }
-    cl_context_properties cps[3] = { CL_CONTEXT_PLATFORM, (cl_context_properties)(platforms[0])(), 0 };
-    context = cl::Context(CL_DEVICE_TYPE_GPU, cps, NULL, NULL, &err);
-    devices = context.getInfo<CL_CONTEXT_DEVICES>();
-    if (devices.empty()) {
-        std::cerr << "Brak urządzeń OpenCL!" << std::endl;
+        std::cerr << "Brak dostepnych platform OpenCL!" << std::endl;
         return SDK_FAILURE;
     }
     
-    device = devices[0];
+    if(writeToConsoleAvailabeDevice() == SDK_FAILURE) return SDK_FAILURE;
+    if(writeToConsoleAvailabeComputeDevice() == SDK_FAILURE) return SDK_FAILURE;
+    std::cout << "Wybrano urzadzenie o nazwie: " << device.getInfo<CL_DEVICE_NAME>() << std::endl<< std::endl;
+
     commandQueue = cl::CommandQueue(context, device, 0, &err);
     inputImage2D = cl::Image2D(context, CL_MEM_READ_ONLY, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height);
     outputImage2D = cl::Image2D(context, CL_MEM_WRITE_ONLY, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height);
@@ -226,6 +278,8 @@ struct ParsedArgs
 {
     size_t H_BINS = 0;
     size_t S_BINS = 0;
+    size_t selectedPlatform = 0;
+    std::string selectedDevice = "GPU";
     bool outHsv = false;
     bool readBmp = false;
 };
@@ -235,12 +289,14 @@ int parseArgument(ParsedArgs& parseArgs, int argc, char * argv[])
     struct option long_options[] = {
         {"H_BINS", required_argument, nullptr, 'H'},
         {"S_BINS", required_argument, nullptr, 'S'},
+        {"device", required_argument, nullptr, 'D'},
+        {"platform", required_argument, nullptr, 'P'},
         {"HSV", no_argument, nullptr, 'r'},
         {"BMP", no_argument, nullptr, 'B'},
         {nullptr, 0, nullptr, 0}         
     };
     int opt;
-    while ((opt = getopt_long(argc, argv, "H:S:r:B", long_options, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, argv, "H:S:r:B:D:P:", long_options, nullptr)) != -1) {
         switch (opt) {
             case 'H':
                 parseArgs.H_BINS = std::stoi(optarg);
@@ -249,6 +305,14 @@ int parseArgument(ParsedArgs& parseArgs, int argc, char * argv[])
             case 'S':
                 parseArgs.S_BINS = std::stoi(optarg);
                 std::cout << "S_BINS: " << parseArgs.S_BINS << std::endl;
+                break;
+            case 'P':
+                parseArgs.selectedPlatform = std::stoi(optarg);
+                std::cout << "platform: " << parseArgs.selectedPlatform << std::endl;
+                break;
+            case 'D':
+                parseArgs.selectedDevice = std::string(optarg);
+                std::cout << "device: " << parseArgs.selectedDevice << std::endl;
                 break;
             case 'r':
                 parseArgs.outHsv = true;
@@ -275,7 +339,7 @@ int main(int argc, char * argv[])
 {
     ParsedArgs parsedArgs;
     if (parseArgument(parsedArgs, argc, argv) != SDK_SUCCESS) return SDK_FAILURE;
-    Histogram clHistogram{parsedArgs.H_BINS, parsedArgs.S_BINS,parsedArgs.outHsv, parsedArgs.readBmp};
+    Histogram clHistogram{parsedArgs.H_BINS, parsedArgs.S_BINS,parsedArgs.outHsv, parsedArgs.readBmp, parsedArgs.selectedPlatform, parsedArgs.selectedDevice};
     if (clHistogram.setup() != SDK_SUCCESS) return SDK_FAILURE;
     if (clHistogram.run() != SDK_SUCCESS) return SDK_FAILURE;
     if (clHistogram.cleanup() != SDK_SUCCESS) return SDK_FAILURE;

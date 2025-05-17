@@ -47,16 +47,16 @@ class Histogram
     cl_uint S_BINS;
     bool outHsv;
     bool readBmp;
+    std::string selectedDevice;
+    size_t selectedPlatform;
 
 public:
-    CLCommandArgs* sampleArgs;
-
-    Histogram(size_t H_BINS, size_t S_BINS, bool outHsv, bool readBmp)
+    Histogram(size_t H_BINS, size_t S_BINS, bool outHsv, bool readBmp,  size_t selectedPlatform, std::string selectedDevice)
         : inputImageData(NULL), outputImageData(NULL),
           byteRWSupport(true), H_BINS(H_BINS), S_BINS(S_BINS),
-          outHsv(outHsv), readBmp(readBmp)
+          outHsv(outHsv), readBmp(readBmp), selectedDevice(selectedDevice), 
+          selectedPlatform(selectedPlatform)
     {
-        sampleArgs = new CLCommandArgs();
         pixelSize = sizeof(uchar4);
         pixelData = NULL;
     }
@@ -76,6 +76,8 @@ public:
     int saveHistogramAsImage(const std::string& filename);
 
 private:
+    int writeToConsoleAvailabeComputeDevice();
+    int writeToConsoleAvailabeDevice();
     int readInputImageTiff(const std::string& path);
     int readInputImageBmp(const std::string& path);
 };
