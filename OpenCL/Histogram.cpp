@@ -112,29 +112,24 @@ auto Histogram::countGlobalAndLocalSize()
     return result;
 
 }
-
 int Histogram::saveHistogramAsImage(const std::string& filename)
 {
-    const int width = S_BINS;
-    const int height = H_BINS;
-    const int channels = 3;
+    cl_int err;
     unsigned int maxValue = *std::max_element(outputBufferHistData.begin(), outputBufferHistData.end());
-
-    std::vector<unsigned char> image(width * height * channels);
-
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            int index = y * width + x;
-            float value = static_cast<float>(outputBufferHistData[index]) / maxValue;
-            unsigned char red, green, blue;
-            Converter::valueToParulaColor(value, red, green, blue);
-            image[(y * width + x) * channels + 0] = red;
-            image[(y * width + x) * channels + 1] = green;
-            image[(y * width + x) * channels + 2] = blue;
-        }
-    }
-
-    return stbi_write_bmp(filename.c_str(), width, height, channels, image.data());
+    
+    cl::Kernel visualizeKernel(program, "visualizeHistogram", &err);
+    visualizeKernel.setArg(0, histogramBuffer);
+    visualizeKernel.setArg(1, outputImageBuffer);
+    visualizeKernel.setArg(2, S_BINS);
+    visualizeKernel.setArg(3, H_BINS);
+    visualizeKernel.setArg(4, maxValue);
+    
+    cl::NDRange global(S_BINS, H_BINS);
+    commandQueue.enqueueNDRangeKernel(visualizeKernel, cl::NullRange, global);
+    std::vector<unsigned char> image(S_BINS * H_BINS * 3);
+    commandQueue.enqueueReadBuffer(outputImageBuffer, CL_TRUE, 0, image.size(), image.data());
+    
+    return stbi_write_bmp(filename.c_str(), S_BINS, H_BINS, 3, image.data());
 }
 
 int Histogram::writeToConsoleAvailabeComputeDevice()
@@ -219,7 +214,9 @@ int Histogram::setupCL()
     kernel = cl::Kernel(program, "histogram2D");
     
     histogramBuffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, H_BINS * S_BINS * sizeof(cl_uint), outputBufferHistData.data());
+    outputImageBuffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, S_BINS * H_BINS * 3 * sizeof(cl_uchar));
     setMaxNumberOfWorkGroup();
+    
 
     return SDK_SUCCESS;
 }

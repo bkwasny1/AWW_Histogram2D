@@ -34,6 +34,7 @@ class Histogram
     cl::Program program;
     cl::Kernel kernel;
     cl::Buffer histogramBuffer;
+    cl::Buffer outputImageBuffer;
     SDKBitMap inputBitmap;
     cv::Mat imageRGB;
     uchar4* pixelData;
