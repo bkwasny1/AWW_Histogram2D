@@ -7,7 +7,6 @@
 #include <getopt.h>
 #include <algorithm>
 #include "stb_image_write.h"
-#include "Converter.hpp"
 #include <chrono>
 #include <optional>
 
@@ -55,8 +54,11 @@ int Histogram::readInputImage()
     }
     
     inputImageData = (cl_uchar4*)malloc(width * height * sizeof(cl_uchar4));
-    outputImageData = (cl_uchar4*)malloc(width * height * sizeof(cl_uchar4));
-    memset(outputImageData, 0, width * height * pixelSize);
+    if(outHsv)
+    {
+        outputImageData = (cl_uchar4*)malloc(width * height * sizeof(cl_uchar4));
+        memset(outputImageData, 0, width * height * pixelSize);
+    }
 
     if(not readBmp)
     {
@@ -80,6 +82,11 @@ void Histogram::createHistogramOutput()
 
 int Histogram::writeOutputImage(std::string outputImageName)
 {
+    if(not outHsv)
+    {
+        return SDK_EXPECTED_FAILURE;
+    }
+
     if(not readBmp)
     {
         cv::Mat output(height, width, CV_8UC4, outputImageData);
@@ -108,7 +115,8 @@ auto Histogram::countGlobalAndLocalSize()
     cl::NDRange global(globalX, globalY);
     cl::NDRange local(localSizeKernel, localSizeKernel);
     std::array<cl::NDRange, 2> result{global,local};
-    printf("GlobalSize: (%d,%d), LocalSize: (%d,%d)\n",globalY,globalX,localSizeKernel,localSizeKernel);
+    printf("GlobalSize: (%d,%d), LocalSize: (%d,%d)\n\n",globalX, globalY,localSizeKernel,localSizeKernel);
+    printf("Rozmiar obrazu: %dx%d\n", width, height);
     return result;
 
 }
@@ -129,31 +137,30 @@ int Histogram::saveHistogramAsImage(const std::string& filename)
     std::vector<unsigned char> image(S_BINS * H_BINS * 3);
     commandQueue.enqueueReadBuffer(outputImageBuffer, CL_TRUE, 0, image.size(), image.data());
     
-    return stbi_write_bmp(filename.c_str(), S_BINS, H_BINS, 3, image.data());
+    return (stbi_write_bmp(filename.c_str(), S_BINS, H_BINS, 3, image.data())) ? SDK_SUCCESS : SDK_FAILURE;
+}
+
+void Histogram::writeToConsoleSelectedComputeDevice()
+{
+    std::clog <<"Wybrano: "<< selectedDevice<<std::endl<< std::endl;
 }
 
 int Histogram::writeToConsoleAvailabeComputeDevice()
 {
+    std::clog<<std::endl;
     std::clog<<"Dostepne urzadzenia obliczeniowe: "<<std::endl;
     std::clog <<"  - GPU"<< std::endl;
     std::clog <<"  - CPU"<< std::endl<< std::endl;
-
-
-    if(selectedDevice == "GPU")
-    {
-        std::clog <<"Wybrano: GPU"<< std::endl<< std::endl;
-        return SDK_SUCCESS;
-    }
-    else if(selectedDevice == "CPU")
-    {
-        std::clog <<"Wybrano: CPU"<< std::endl<< std::endl;
-        return SDK_SUCCESS;
-    }
-    else
+    if((selectedDevice != "GPU") and (selectedDevice != "CPU"))
     {
         std::cerr<<"ERROR: Brak wybranego urzadzenia: dostepne CPU oraz GPU"<< std::endl;
         return SDK_FAILURE;
     } 
+    return SDK_SUCCESS;
+}
+void Histogram::writeToConsoleSelectedDevice()
+{
+    std::clog << "Wybrano urzadzenie o nazwie: " << device.getInfo<CL_DEVICE_NAME>() << std::endl<< std::endl;
 }
 
 int Histogram::writeToConsoleAvailabeDevice()
@@ -184,7 +191,7 @@ int Histogram::writeToConsoleAvailabeDevice()
         std::clog << std::endl;
     }
     if(isSelected) return SDK_SUCCESS;
-    std::cerr << "Brak urzadzenia OpenCL!" << std::endl;
+    std::cerr << "ERROR: Brak urzadzenia "<<selectedDevice<<" o numerze: "<<selectedPlatform<< std::endl;
     return SDK_FAILURE;
 }
 
@@ -193,17 +200,22 @@ int Histogram::setupCL()
     cl_int err;
     cl::Platform::get(&platforms);
     if(platforms.empty()){
-        std::cerr << "Brak dostepnych platform OpenCL!" << std::endl;
+        std::cerr << "ERROR: Brak dostepnych platform OpenCL!" << std::endl;
         return SDK_FAILURE;
     }
     
-    if(writeToConsoleAvailabeDevice() == SDK_FAILURE) return SDK_FAILURE;
     if(writeToConsoleAvailabeComputeDevice() == SDK_FAILURE) return SDK_FAILURE;
-    std::cout << "Wybrano urzadzenie o nazwie: " << device.getInfo<CL_DEVICE_NAME>() << std::endl<< std::endl;
+    writeToConsoleSelectedComputeDevice();
+    if(writeToConsoleAvailabeDevice() == SDK_FAILURE) return SDK_FAILURE;
+    writeToConsoleSelectedDevice();
+    
 
     commandQueue = cl::CommandQueue(context, device, 0, &err);
     inputImage2D = cl::Image2D(context, CL_MEM_READ_ONLY, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height);
-    outputImage2D = cl::Image2D(context, CL_MEM_WRITE_ONLY, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height);
+    if(outHsv)
+    {
+        outputImage2D = cl::Image2D(context, CL_MEM_WRITE_ONLY, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height);
+    }
 
     SDKFile kernelFile;
     std::string kernelPath = getPath() + "Histogram_Kernels.cl";
@@ -211,7 +223,12 @@ int Histogram::setupCL()
     cl::Program::Sources source(1, std::make_pair(kernelFile.source().data(), kernelFile.source().size()));
     program = cl::Program(context, source);
     program.build(devices);
-    kernel = cl::Kernel(program, "histogram2D");
+    std::string kernelName = "histogram2D";
+    if(not outHsv)
+    {
+        kernelName = "histogram2DWithOutHsv";
+    }
+    kernel = cl::Kernel(program, kernelName.c_str());
     
     histogramBuffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, H_BINS * S_BINS * sizeof(cl_uint), outputBufferHistData.data());
     outputImageBuffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, S_BINS * H_BINS * 3 * sizeof(cl_uchar));
@@ -223,6 +240,12 @@ int Histogram::setupCL()
 
 int Histogram::runCLKernels()
 {
+    size_t idxArg = 1;
+    if(not outHsv)
+    {
+        idxArg = 0;
+    }
+
     cl::size_t<3> origin;
     origin[0] = 0;
     origin[1] = 0;
@@ -235,16 +258,26 @@ int Histogram::runCLKernels()
 
     auto start = std::chrono::high_resolution_clock::now();
     commandQueue.enqueueWriteImage(inputImage2D, CL_TRUE, origin, region, 0, 0, inputImageData);
+    
+
+
     kernel.setArg(0, inputImage2D);
-    kernel.setArg(1, outputImage2D);
-    kernel.setArg(2, histogramBuffer);
-    kernel.setArg(3, width);
-    kernel.setArg(4, height);
-    kernel.setArg(5, H_BINS);
-    kernel.setArg(6, S_BINS);
+    if(outHsv)
+    {
+        kernel.setArg(1, outputImage2D);
+    }
+    kernel.setArg(idxArg + 1, histogramBuffer);
+    kernel.setArg(idxArg + 2, width);
+    kernel.setArg(idxArg + 3, height);
+    kernel.setArg(idxArg + 4, H_BINS);
+    kernel.setArg(idxArg + 5, S_BINS);
+
     auto globalAndLocalSize = countGlobalAndLocalSize();
     commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, globalAndLocalSize.at(0), globalAndLocalSize.at(1));
-    commandQueue.enqueueReadImage(outputImage2D, CL_TRUE, origin, region, 0, 0, outputImageData);
+    if(outHsv)
+    {
+        commandQueue.enqueueReadImage(outputImage2D, CL_TRUE, origin, region, 0, 0, outputImageData);
+    }
     commandQueue.enqueueReadBuffer(histogramBuffer, CL_TRUE, 0, outputBufferHistData.size() * sizeof(cl_uint), outputBufferHistData.data());
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsed = end - start;
@@ -258,7 +291,7 @@ void Histogram::saveBufferToCSV2D(cl::CommandQueue& queue, cl::Buffer& buffer, s
 
     std::ofstream outFile(filename);
     if (!outFile.is_open()) {
-        std::cerr << "Nie można otworzyć pliku: " << filename << std::endl;
+        std::cerr << "ERROR: Nie można otworzyć pliku CSV: " << filename << std::endl;
         return;
     }
 
@@ -271,7 +304,7 @@ void Histogram::saveBufferToCSV2D(cl::CommandQueue& queue, cl::Buffer& buffer, s
     }
 
     outFile.close();
-    std::cout << "Zapisano histogram jako plik CSV: " << filename << std::endl;
+    std::clog << "Zapisano histogram jako plik CSV: " << filename << std::endl;
 }
 
 int Histogram::setup()
@@ -285,19 +318,38 @@ int Histogram::run()
 {
     bool success = runCLKernels() == SDK_SUCCESS;
 
-if (success) {
-    writeOutputImage(OUTPUT_IMAGE);
-    saveHistogramAsImage(OUTPUT_HIST);
-    saveBufferToCSV2D(commandQueue, histogramBuffer, H_BINS, S_BINS, "histogram_output.csv");
-}
+    if (success) {
+        if(writeOutputImage(OUTPUT_IMAGE) == SDK_SUCCESS)
+        {
+            if(readBmp)
+            {
+                std::clog << "Zapisano obraz HSV: " << OUTPUT_IMAGE << std::endl; 
+            }
+            else
+            {
+                std::clog << "Zapisano obraz HSV: " << OUTPUT_IMAGE_TIF << std::endl; 
+            }
+        }
+        if(saveHistogramAsImage(OUTPUT_HIST) == SDK_SUCCESS)
+        {
+            std::clog << "Zapisano histogram jako obraz: " << OUTPUT_HIST << std::endl; 
+        };
+        if(histAsCsv)
+        {
+            saveBufferToCSV2D(commandQueue, histogramBuffer, H_BINS, S_BINS, OUTPUT_HIST_CSV);
+        }
+    }
 
-return success ? SDK_SUCCESS : SDK_FAILURE;
+    return success ? SDK_SUCCESS : SDK_FAILURE;
 }
 
 int Histogram::cleanup()
 {
     free(inputImageData);
-    free(outputImageData);
+    if(outHsv)
+    {
+        free(outputImageData);
+    }
     return SDK_SUCCESS;
 }
 
@@ -309,6 +361,7 @@ struct ParsedArgs
     std::string selectedDevice = "GPU";
     bool outHsv = false;
     bool readBmp = false;
+    bool histAsCsv = false;
 };
 
 int parseArgument(ParsedArgs& parseArgs, int argc, char * argv[])
@@ -320,40 +373,38 @@ int parseArgument(ParsedArgs& parseArgs, int argc, char * argv[])
         {"platform", required_argument, nullptr, 'P'},
         {"HSV", no_argument, nullptr, 'r'},
         {"BMP", no_argument, nullptr, 'B'},
+        {"HistCSV", no_argument, nullptr, 'C'},
         {nullptr, 0, nullptr, 0}         
     };
     int opt;
-    while ((opt = getopt_long(argc, argv, "H:S:r:B:D:P:", long_options, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, argv, "H:S:D:P:rBC", long_options, nullptr)) != -1) {
         switch (opt) {
             case 'H':
                 parseArgs.H_BINS = std::stoi(optarg);
-                std::cout << "H_BINS: " << parseArgs.H_BINS << std::endl;
                 break;
             case 'S':
                 parseArgs.S_BINS = std::stoi(optarg);
-                std::cout << "S_BINS: " << parseArgs.S_BINS << std::endl;
                 break;
             case 'P':
                 parseArgs.selectedPlatform = std::stoi(optarg);
-                std::cout << "platform: " << parseArgs.selectedPlatform << std::endl;
                 break;
             case 'D':
                 parseArgs.selectedDevice = std::string(optarg);
-                std::cout << "device: " << parseArgs.selectedDevice << std::endl;
                 break;
             case 'r':
                 parseArgs.outHsv = true;
-                std::cout << "HSV opcja wlaczona." << std::endl;
                 break;
             case 'B':
                 parseArgs.readBmp = true;
-                std::cout << "Nastapi proba odczytu input.bmp" << std::endl;
+                break;
+            case 'C':
+                parseArgs.histAsCsv = true;
                 break;
             case '?':
-                std::cerr << "Nieznana opcja lub brak wymaganych argumentow." << std::endl;
+                std::cerr << "ERROR: Nieznana opcja lub brak wymaganych argumentow." << std::endl;
                 return SDK_FAILURE;
             default:
-                std::cerr << "Error podczas parsowania argumentow." << std::endl;
+                std::cerr << "ERROR: Blad podczas parsowania argumentow." << std::endl;
                 return SDK_FAILURE;
         }
     }
@@ -366,7 +417,8 @@ int main(int argc, char * argv[])
 {
     ParsedArgs parsedArgs;
     if (parseArgument(parsedArgs, argc, argv) != SDK_SUCCESS) return SDK_FAILURE;
-    Histogram clHistogram{parsedArgs.H_BINS, parsedArgs.S_BINS,parsedArgs.outHsv, parsedArgs.readBmp, parsedArgs.selectedPlatform, parsedArgs.selectedDevice};
+    Histogram clHistogram{parsedArgs.H_BINS, parsedArgs.S_BINS,parsedArgs.outHsv, parsedArgs.readBmp, 
+                            parsedArgs.selectedPlatform, parsedArgs.selectedDevice, parsedArgs.histAsCsv};
     if (clHistogram.setup() != SDK_SUCCESS) return SDK_FAILURE;
     if (clHistogram.run() != SDK_SUCCESS) return SDK_FAILURE;
     if (clHistogram.cleanup() != SDK_SUCCESS) return SDK_FAILURE;

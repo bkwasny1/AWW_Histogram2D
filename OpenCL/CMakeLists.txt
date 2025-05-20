@@ -16,11 +16,8 @@
 
 
 set( SAMPLE_NAME Histogram )
-set( SOURCE_FILES Histogram.cpp Converter.cpp)
+set( SOURCE_FILES Histogram.cpp)
 set( EXTRA_FILES Histogram_Kernels.cl input.bmp input.tif )
-set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV/x64/mingw/staticlib")
-find_package(OpenCV REQUIRED)
-message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
 
 
 ############################################################################
@@ -28,6 +25,29 @@ message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
 set(CMAKE_SUPPRESS_REGENERATION TRUE)
 cmake_minimum_required( VERSION 3.5.0 )
 project( ${SAMPLE_NAME} )
+
+################################OUR#########################################
+
+message(STATUS "System: ${CMAKE_SYSTEM_NAME}")
+
+if(WIN32)
+    set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV/x64/mingw/staticlib")
+elseif(UNIX)
+    set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/OpenCV/lib/cmake/opencv4/")
+endif()
+
+
+find_package(OpenCV REQUIRED)
+message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
+
+if(NOT TARGET Iconv::Iconv)
+    add_library(Iconv::Iconv INTERFACE IMPORTED)
+    set_target_properties(Iconv::Iconv PROPERTIES
+        INTERFACE_LINK_LIBRARIES "c"
+    )
+endif()
+
+###############################ENDOUR#######################################
 
 if(CMAKE_BUILD_TYPE MATCHES "[Tt][Bb][Bb]")
 	return( )

@@ -66,6 +66,21 @@ uint calculateCoordOfHist2D(uint4 HSV, const uint hBins, const uint sBins )
 
 }
 
+__kernel void histogram2DWithOutHsv(__read_only image2d_t inputImage, __global uint* outputHist , const uint width, const uint height, const uint hBin, const uint sBin)
+{
+    int2 coord = (int2)(get_global_id(0), get_global_id(1));
+    if(coord.x >= width || coord.y >= height)
+    {
+	    return;
+    }
+    uint4 rgba = read_imageui(inputImage, imageSampler, coord);
+
+    uint4 HSV = rgbToHsv(rgba);
+    uint idx = calculateCoordOfHist2D(HSV,hBin,sBin);
+
+    atomic_inc(&outputHist[idx]);
+}
+
 __kernel void histogram2D(__read_only image2d_t inputImage, __write_only image2d_t outputImage,__global uint* outputHist , const uint width, const uint height, const uint hBin, const uint sBin)
 {
     int2 coord = (int2)(get_global_id(0), get_global_id(1));

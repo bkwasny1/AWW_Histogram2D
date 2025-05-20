@@ -15,6 +15,7 @@
 #define OUTPUT_IMAGE "outputHSV.bmp"
 #define OUTPUT_IMAGE_TIF "outputHSV.tif"
 #define OUTPUT_HIST "outputHist2D.bmp"
+#define OUTPUT_HIST_CSV "histogram_output.csv"
 
 using namespace appsdk;
 
@@ -46,17 +47,18 @@ class Histogram
     size_t maxWorkGroupSizeForKernel;
     cl_uint H_BINS;
     cl_uint S_BINS;
-    bool outHsv;
-    bool readBmp;
+    const bool outHsv;
+    const bool readBmp;
+    const bool histAsCsv;
     std::string selectedDevice;
     size_t selectedPlatform;
 
 public:
-    Histogram(size_t H_BINS, size_t S_BINS, bool outHsv, bool readBmp,  size_t selectedPlatform, std::string selectedDevice)
+    Histogram(size_t H_BINS, size_t S_BINS, const bool outHsv, const bool readBmp,  size_t selectedPlatform, std::string selectedDevice, const bool histAsCsv)
         : inputImageData(NULL), outputImageData(NULL),
           byteRWSupport(true), H_BINS(H_BINS), S_BINS(S_BINS),
           outHsv(outHsv), readBmp(readBmp), selectedDevice(selectedDevice), 
-          selectedPlatform(selectedPlatform)
+          selectedPlatform(selectedPlatform), histAsCsv(histAsCsv)
     {
         pixelSize = sizeof(uchar4);
         pixelData = NULL;
@@ -77,8 +79,11 @@ public:
     int saveHistogramAsImage(const std::string& filename);
 
 private:
+
+    void writeToConsoleSelectedComputeDevice();
     int writeToConsoleAvailabeComputeDevice();
     int writeToConsoleAvailabeDevice();
+    void writeToConsoleSelectedDevice();
     int readInputImageTiff(const std::string& path);
     int readInputImageBmp(const std::string& path);
     void saveBufferToCSV2D(cl::CommandQueue& queue, cl::Buffer& buffer, size_t H, size_t S, const std::string& filename);

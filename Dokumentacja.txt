@@ -4,5 +4,7 @@ Dostepne parametry:
 -H <uint8_t> lub --H_BINS <uint8_t>     <- ustawia liczbę binów dla składowej Hue z przestrzeni barw HSV
 -S <uint8_t> lub --S_BINS <uint8_t>     <- ustawia liczbę binów dla składowej Saturiation z przestrzeni barw HSV
 -B lub --BMP                            <- jeżeli ustawiona wówczas obraz wejściowy będzie pobierany w formacie .bmp, domyślnie .tif
+-r lub --HSV                            <- jeżeli ustawiona wówczas obraz w plikach wyjściowych pojawi się również obraz HSV, domyślnie nie.
+-C lub --HistCSV                        <- jeżeli ustawiona wówczas obraz w plikach wyjściowych pojawi się histogram w pliku .csv, domyślnie nie.
 -D <string> --device <string>           <- dostępne opcje to CPU oraz GPU. Domyślnie GPU
 -P <uint8_t> lub --platform <uint8_t>   <- wybór urządzenia z platformy w konsoli <uint8_t>: <nazwa>. Domyślnie 0
