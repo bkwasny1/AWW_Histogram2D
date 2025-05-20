@@ -252,6 +252,28 @@ int Histogram::runCLKernels()
     return SDK_SUCCESS;
 }
 
+void Histogram::saveBufferToCSV2D(cl::CommandQueue& queue, cl::Buffer& buffer, size_t H, size_t S, const std::string& filename) {
+    std::vector<int> hostHistogram(H * S);
+    queue.enqueueReadBuffer(buffer, CL_TRUE, 0, hostHistogram.size() * sizeof(int), hostHistogram.data());
+
+    std::ofstream outFile(filename);
+    if (!outFile.is_open()) {
+        std::cerr << "Nie można otworzyć pliku: " << filename << std::endl;
+        return;
+    }
+
+    for (size_t h = 0; h < H; ++h) {
+        for (size_t s = 0; s < S; ++s) {
+            outFile << hostHistogram[h * S + s];
+            if (s < S - 1) outFile << ",";
+        }
+        outFile << "\n";
+    }
+
+    outFile.close();
+    std::cout << "Zapisano histogram jako plik CSV: " << filename << std::endl;
+}
+
 int Histogram::setup()
 {
     
@@ -261,7 +283,15 @@ int Histogram::setup()
 
 int Histogram::run()
 {
-    return runCLKernels() == SDK_SUCCESS && writeOutputImage(OUTPUT_IMAGE) == SDK_SUCCESS && saveHistogramAsImage(OUTPUT_HIST) == SDK_SUCCESS ? SDK_SUCCESS : SDK_FAILURE;
+    bool success = runCLKernels() == SDK_SUCCESS;
+
+if (success) {
+    writeOutputImage(OUTPUT_IMAGE);
+    saveHistogramAsImage(OUTPUT_HIST);
+    saveBufferToCSV2D(commandQueue, histogramBuffer, H_BINS, S_BINS, "histogram_output.csv");
+}
+
+return success ? SDK_SUCCESS : SDK_FAILURE;
 }
 
 int Histogram::cleanup()

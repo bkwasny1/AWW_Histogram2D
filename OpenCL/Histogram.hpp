@@ -81,4 +81,5 @@ private:
     int writeToConsoleAvailabeDevice();
     int readInputImageTiff(const std::string& path);
     int readInputImageBmp(const std::string& path);
+    void saveBufferToCSV2D(cl::CommandQueue& queue, cl::Buffer& buffer, size_t H, size_t S, const std::string& filename);
 };
