@@ -8,3 +8,6 @@ Dostepne parametry:
 -C lub --HistCSV                        <- jeżeli ustawiona wówczas obraz w plikach wyjściowych pojawi się histogram w pliku .csv, domyślnie nie.
 -D <string> --device <string>           <- dostępne opcje to CPU oraz GPU. Domyślnie GPU
 -P <uint8_t> lub --platform <uint8_t>   <- wybór urządzenia z platformy w konsoli <uint8_t>: <nazwa>. Domyślnie 0
+-G lub --HistGRAY                       <- jeżeli ustawiona wówczas Histogram2d (obraz) zostanie wygenerowany w odcieniach szarości, domyślnie mapa kolorów "Palura".
+-i <uint64_t> --iteration <uint64_t>    <- ustawia maksymalną ilość iteracji
+-I lub --INF                            <- jeżeli ustawiona wówczas operacja będzie wykonywana w pętli nieskończonej

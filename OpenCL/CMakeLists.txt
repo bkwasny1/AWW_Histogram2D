@@ -16,7 +16,7 @@
 
 
 set( SAMPLE_NAME Histogram )
-set( SOURCE_FILES Histogram.cpp)
+set( SOURCE_FILES Histogram.cpp )
 set( EXTRA_FILES Histogram_Kernels.cl input.bmp input.tif )
 
 

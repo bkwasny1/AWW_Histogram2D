@@ -102,7 +102,8 @@ __kernel void visualizeHistogram(__global const uint* histData,
                                __global uchar* outputImage,
                                const uint width, 
                                const uint height,
-                               const uint maxValue)
+                               const uint maxValue,
+                               const uint histGray)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -113,19 +114,29 @@ __kernel void visualizeHistogram(__global const uint* histData,
     float value = (float)histData[idx] / (float)maxValue;
     value = clamp(value, 0.0f, 1.0f);
     
-    // Map to parula
-    float scaled = value * 63.0f;
-    int colorIdx = (int)scaled;
-    float t = scaled - colorIdx;
-    
-    if (colorIdx >= 63) colorIdx = 62;
-    
-    float r = (1-t)*parula[colorIdx][0] + t*parula[colorIdx+1][0];
-    float g = (1-t)*parula[colorIdx][1] + t*parula[colorIdx+1][1];
-    float b = (1-t)*parula[colorIdx][2] + t*parula[colorIdx+1][2];
-    
-    int outIdx = (y * width + x) * 3;
-    outputImage[outIdx + 0] = (uchar)(r * 255);
-    outputImage[outIdx + 1] = (uchar)(g * 255);
-    outputImage[outIdx + 2] = (uchar)(b * 255);
+    if (histGray == 1)
+    {
+        int outIdx = (y * width + x) * 3;
+        outputImage[outIdx + 0] = (uchar)(value * 255);
+        outputImage[outIdx + 1] = (uchar)(value * 255);
+        outputImage[outIdx + 2] = (uchar)(value * 255);
+    }
+    else
+    {
+        // Map to parula
+        float scaled = value * 63.0f;
+        int colorIdx = (int)scaled;
+        float t = scaled - colorIdx;
+        
+        if (colorIdx >= 63) colorIdx = 62;
+        
+        float r = (1-t)*parula[colorIdx][0] + t*parula[colorIdx+1][0];
+        float g = (1-t)*parula[colorIdx][1] + t*parula[colorIdx+1][1];
+        float b = (1-t)*parula[colorIdx][2] + t*parula[colorIdx+1][2];
+        
+        int outIdx = (y * width + x) * 3;
+        outputImage[outIdx + 0] = (uchar)(r * 255);
+        outputImage[outIdx + 1] = (uchar)(g * 255);
+        outputImage[outIdx + 2] = (uchar)(b * 255);
+    }
 }
