@@ -14,10 +14,10 @@ int Histogram::readInputImageTiff(const std::string& path)
 {
     std::string inputImageName = path + std::string(".tif");
     cv::Mat image = cv::imread(inputImageName, cv::IMREAD_UNCHANGED);
-    cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGBA);
     if (image.empty()) {
         return SDK_FAILURE;
     }
+    cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGBA);
     height = image.rows;
     width = image.cols;
     return SDK_SUCCESS;
