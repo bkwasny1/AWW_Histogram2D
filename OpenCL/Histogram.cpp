@@ -16,7 +16,7 @@
 void Histogram::readFileNames(){
     std::string folderPath =  getPath()  + INF_LOOP_DIR;
     if (!std::filesystem::exists(folderPath) || !std::filesystem::is_directory(folderPath)) {
-        std::cerr << "Nieznaleziono folderu Images" << std::endl;
+        std::cerr << "Nieznaleziono folderu Inputs" << std::endl;
         std::exit(SDK_FAILURE);
     }
     std::string extension = (readBmp) ? ".bmp" : ".tif";
@@ -28,7 +28,7 @@ void Histogram::readFileNames(){
     }
     if (fileNames.size() == 0)
     {
-        std::cerr << "Brak zdjec o rozszerzeniu "<<extension<<" w folderze Images" << std::endl;
+        std::cerr << "Brak zdjec o rozszerzeniu "<<extension<<" w folderze Inputs" << std::endl;
         std::exit(SDK_FAILURE);
     }
 }
