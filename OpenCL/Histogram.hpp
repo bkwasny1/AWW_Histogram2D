@@ -56,7 +56,7 @@ class Histogram
     std::string selectedDevice;
     size_t selectedPlatform;
     std::vector<std::string> fileNames;
-    bool firstLoop = true;
+    bool firstLoop{true};
     uint64_t indexOfInput{0};
     std::vector<double> timesVector;
     std::array<cl::NDRange, 2> globalAndLocalSize;
@@ -64,7 +64,10 @@ class Histogram
     const uint64_t maxIter;
     bool successSaveImg{false};
     bool successSaveHist{false};
+    bool readLoop{true};
     cl::Kernel visualizeKernel;
+    std::vector<SDKBitMap> imageInputVectorBmp;
+    std::vector<cv::Mat> imageInputVectorTif;
 
 public:
 
@@ -87,7 +90,7 @@ public:
     int readInputImage();
     int writeOutputImage(std::string outputImageName);
     int setupCL();
-    int runCLKernels();
+    int runCLKernels(std::string&);
     int setup();
     int run();
     int cleanup();

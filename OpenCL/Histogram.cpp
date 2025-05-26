@@ -36,24 +36,59 @@ void Histogram::readFileNames(){
 
 int Histogram::readInputImageTiff(const std::string& path)
 {
-    cv::Mat image = cv::imread(path, cv::IMREAD_UNCHANGED);
-    if (image.empty()) {
-        return SDK_FAILURE;
+    if(readLoop)
+    {
+        cv::Mat image = cv::imread(path, cv::IMREAD_UNCHANGED);
+        if (image.empty()) 
+        {
+            return SDK_FAILURE;
+        }
+        if(infLoop)
+        {
+            cv::cvtColor(image, image, cv::COLOR_BGR2RGBA);
+            imageInputVectorTif.push_back(image);
+            return SDK_SUCCESS;
+        }
+        else
+        {
+            cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGBA);
+        }
     }
-    cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGBA);
-    height = image.rows;
-    width = image.cols;
+    else
+    {
+        imageRGB = imageInputVectorTif[indexOfInput];
+    }
+    
+    height = imageRGB.rows;
+    width = imageRGB.cols;
     return SDK_SUCCESS;
 }
 
 int Histogram::readInputImageBmp(const std::string& path)
 {
-    inputBitmap.load(path.c_str());
-    if (!inputBitmap.isLoaded())
+    if(readLoop)
     {
-        return SDK_FAILURE;
+        SDKBitMap image;
+        image.load(path.c_str());
+        if (!image.isLoaded())
+        {
+            return SDK_FAILURE;
+        }
+        if(infLoop)
+        {
+            imageInputVectorBmp.push_back(image);
+            return SDK_SUCCESS;
+        }
+        else
+        {
+            inputBitmap = image;
+        }
     }
-
+    else
+    {
+        inputBitmap = imageInputVectorBmp[indexOfInput];
+    }
+    
     height = inputBitmap.getHeight();
     width = inputBitmap.getWidth();
     pixelData = inputBitmap.getPixels();
@@ -88,7 +123,11 @@ int Histogram::readInputImage()
     {
         if(readInputImageBmp(path) == SDK_FAILURE) return SDK_FAILURE;
     }
-    
+    if(infLoop and readLoop)
+    {
+        return SDK_SUCCESS;
+    }
+
     inputImageData = std::vector<cl_uchar4>(width * height, cl_uchar4{0, 0, 0, 0});
     if(outHsv)
     {
@@ -182,7 +221,8 @@ int Histogram::saveHistogramAsImage(const std::string& filename)
     commandQueue.enqueueNDRangeKernel(visualizeKernel, cl::NullRange, global, local);
 
     std::vector<unsigned char> image(S_BINS * H_BINS * 3);
-    commandQueue.enqueueReadBuffer(outputImageBuffer, CL_TRUE, 0, image.size(), image.data());
+    commandQueue.enqueueReadBuffer(outputImageBuffer, CL_FALSE, 0, image.size(), image.data());
+    commandQueue.finish();
     
     return (stbi_write_bmp(filename.c_str(), S_BINS, H_BINS, 3, image.data())) ? SDK_SUCCESS : SDK_FAILURE;
 }
@@ -384,21 +424,19 @@ int Histogram::setupCL()
         }
         kernel = cl::Kernel(program, kernelName.c_str());
         setMaxNumberOfWorkGroup();
+        histogramBuffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, H_BINS * S_BINS * sizeof(cl_uint), outputBufferHistData.data());
+        outputImageBuffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, S_BINS * H_BINS * 3 * sizeof(cl_uchar));
     }
-
     inputImage2D = cl::Image2D(context, CL_MEM_READ_ONLY, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height);
     if(outHsv)
     {
         outputImage2D = cl::Image2D(context, CL_MEM_WRITE_ONLY, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height);
     }
     
-    histogramBuffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, H_BINS * S_BINS * sizeof(cl_uint), outputBufferHistData.data());
-    outputImageBuffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, S_BINS * H_BINS * 3 * sizeof(cl_uchar));
-    
     return SDK_SUCCESS;
 }
 
-int Histogram::runCLKernels()
+int Histogram::runCLKernels(std::string& name)
 {
     if(infLoop)
     {
@@ -423,7 +461,7 @@ int Histogram::runCLKernels()
     region[2] = 1;
 
     auto start = std::chrono::high_resolution_clock::now();
-    commandQueue.enqueueWriteImage(inputImage2D, CL_TRUE, origin, region, 0, 0, inputImageData.data());
+    commandQueue.enqueueWriteImage(inputImage2D, CL_FALSE, origin, region, 0, 0, inputImageData.data());
 
     kernel.setArg(0, inputImage2D);
     if(outHsv)
@@ -440,16 +478,19 @@ int Histogram::runCLKernels()
     globalAndLocalSize = countGlobalAndLocalSize();
 
     commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, globalAndLocalSize.at(0), globalAndLocalSize.at(1));
-
+    
     if(outHsv)
     {
-        commandQueue.enqueueReadImage(outputImage2D, CL_TRUE, origin, region, 0, 0, outputImageData.data());
+        commandQueue.enqueueReadImage(outputImage2D, CL_FALSE, origin, region, 0, 0, outputImageData.data());
     }
     commandQueue.enqueueReadBuffer(histogramBuffer, CL_TRUE, 0, outputBufferHistData.size() * sizeof(cl_uint), outputBufferHistData.data());
+    
+    successSaveHist = saveHistogramAsImage(name) == SDK_SUCCESS;
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsed = end - start;
     timesVector.push_back(elapsed.count());
+    writeDurationTimeForIteration(elapsed.count());
 
     return SDK_SUCCESS;
 }
@@ -487,7 +528,14 @@ int Histogram::setup()
         if (infLoop)
         {
             readFileNames();
+            for(auto i = 0u; i < fileNames.size(); i++)
+            {
+                readInputImage();
+                indexOfInput ++;
+            }
+            readLoop = false;
         }
+
     }
     return readInputImage() == SDK_SUCCESS && setupCL() == SDK_SUCCESS ? SDK_SUCCESS : SDK_FAILURE;
 }
@@ -495,10 +543,11 @@ int Histogram::setup()
 
 int Histogram::run()
 {
-    bool success = runCLKernels() == SDK_SUCCESS;
-
+    std::string name = createOutputFielname(OUTPUT_HIST);
+    bool success = runCLKernels(name) == SDK_SUCCESS;
+    
     if (success) {
-        std::string name = createOutputFielname(OUTPUT_IMAGE);
+        name = createOutputFielname(OUTPUT_IMAGE);
         successSaveImg = writeOutputImage(name) == SDK_SUCCESS;
         if(successSaveImg)
         {
@@ -508,17 +557,11 @@ int Histogram::run()
             }
             
         }
-        name = createOutputFielname(OUTPUT_HIST);
-        auto start = std::chrono::high_resolution_clock::now();
-        successSaveHist = saveHistogramAsImage(name) == SDK_SUCCESS;
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> elapsed = end - start;
-        timesVector[timesVector.size()-1] += elapsed.count();
-        writeDurationTimeForIteration(timesVector[timesVector.size()-1]);
         if(successSaveHist)
         {
             if(not infLoop)
             {
+                name = createOutputFielname(OUTPUT_HIST);
                 std::clog << "Zapisano histogram jako obraz: " << name << std::endl;
             }
         };

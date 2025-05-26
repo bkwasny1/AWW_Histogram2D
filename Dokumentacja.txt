@@ -10,4 +10,5 @@ Dostepne parametry:
 -P <uint8_t> lub --platform <uint8_t>   <- wybór urządzenia z platformy w konsoli <uint8_t>: <nazwa>. Domyślnie 0
 -G lub --HistGRAY                       <- jeżeli ustawiona wówczas Histogram2d (obraz) zostanie wygenerowany w odcieniach szarości, domyślnie mapa kolorów "Palura".
 -i <uint64_t> --iteration <uint64_t>    <- ustawia maksymalną ilość iteracji
--I lub --INF                            <- jeżeli ustawiona wówczas operacja będzie wykonywana w pętli nieskończonej
+-I lub --INF                            <- jeżeli ustawiona wówczas operacja będzie wykonywana w pętli nieskończonej.
+                                           Aby zakończyć pętle nieskończoną należy wcisnąć q lub ESC
