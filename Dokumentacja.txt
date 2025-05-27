@@ -1,5 +1,11 @@
-Dostepne parametry:
+Uruchomienie aplikacji:
 
+- Linux ----> w folderze „LINUX” znajduje się plik wykonywalny umożliwiający uruchomienie aplikacji z poziomu konsoli poprzez bezpośrednie wywołanie pliku binarnego. Aplikacja wspiera 	      parametryzację, której szczegóły zostały opisane poniżej. W tym samym folderze znajdują się także obrazy wejściowe w formatach .bmp oraz .tif. W przypadku konieczności 		      podmiany któregoś z obrazów należy zachować oryginalne nazwy plików i umieścić je w tej samej lokalizacji co plik wykonywalny. Jeśli aplikacja ma zostać uruchomiona w 		      trybie nieskończonej pętli, należy upewnić się, że w folderze „Inputs” znajdują się obrazy zgodne z wymaganiami opisanymi w pliku „README.txt”, również obecnym w tym 		      folderze. Może pojawić się problem z uprawnieniami pliku. Należy wówczas przy pomocy komendy "chmod" nadać uprawnienia "x"
+
+- Windows --> w folderze „WINDOWS” znajduje się plik wykonywalny umożliwiający uruchomienie aplikacji z poziomu konsoli poprzez bezpośrednie wywołanie pliku binarnego. Aplikacja wspiera 	      parametryzację, której szczegóły zostały opisane poniżej. W tym samym folderze znajdują się także obrazy wejściowe w formatach .bmp oraz .tif. W przypadku konieczności 		      podmiany któregoś z obrazów należy zachować oryginalne nazwy plików i umieścić je w tej samej lokalizacji co plik wykonywalny. Jeśli aplikacja ma zostać uruchomiona w trybie 	      nieskończonej pętli, należy upewnić się, że w folderze „Inputs” znajdują się obrazy zgodne z wymaganiami opisanymi w pliku „README.txt”, również obecnym w tym folderze.
+
+
+Dostępne parametry:
 
 -H <uint8_t> lub --H_BINS <uint8_t>     <- ustawia liczbę binów dla składowej Hue z przestrzeni barw HSV
 -S <uint8_t> lub --S_BINS <uint8_t>     <- ustawia liczbę binów dla składowej Saturiation z przestrzeni barw HSV
@@ -12,3 +18,9 @@ Dostepne parametry:
 -i <uint64_t> --iteration <uint64_t>    <- ustawia maksymalną ilość iteracji
 -I lub --INF                            <- jeżeli ustawiona wówczas operacja będzie wykonywana w pętli nieskończonej.
                                            Aby zakończyć pętle nieskończoną należy wcisnąć q lub ESC
+
+
+
+Wybór urządzenia obliczeniowego:
+
+Aplikacja domyślnie wykorzystuje procesor graficzny (GPU) oraz platformę o indeksie 0 do przeprowadzania obliczeń. Za pomocą odpowiednich parametrów można zmienić domyślne ustawienia,  przy czym na początku działania algorytmu aplikacja wyświetla listę dostępnych urządzeń obliczeniowych. Liczba podana przy nazwie urządzenia wskazuje wartość, którą należy użyć z parametrem -P lub --platform

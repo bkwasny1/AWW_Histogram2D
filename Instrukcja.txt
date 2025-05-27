@@ -1,0 +1,62 @@
+Windows:
+
+----------------------Kompilacja statycznych bibliotek OpenCV------------------------
+
+- sprawdź czy masz zainstalowany Mingw - CMD: where mingw32-make lub mingw32-make --version
+- sprawdź czy masz zainstalowany Cmake - CMD: where cmake lub cmake --version
+- sprawdź czy masz zainstalowany oraz skonfigurowanego git
+- z poziomu CMD uruchom skrypt: install_opnecv.bat z folderu OpenCV_Install
+
+!!! Może pojawić się problem z długością ścieżki. Jeżeli instalacja się nie powiedzie przekopiuj skrypt np. do   	  !!!
+!!! folderu na pulpicie a następnie uruchom. Gdy instalacja się powiedzie (z poziomu innego folderu) wówczas przekopiuj   !!!
+!!! zawartość folderu "OpenCV_TO_COPY" do folderu "OpenCV" w folderze "OpenCl". Jeśli problem ze ścieżką nie wystąpił     !!!
+!!! to biblioteka zostanie zainstalowana automatycznie w odpowiednim miejscu						  !!!
+
+
+----------------------Budowanie plików CmakeFile------------------------
+cmake -G "MinGW Makefiles" (z folderu OpenCL)
+
+----------------------Kompilacja projektu------------------------
+mingw32-make (z folderu OpenCL)
+
+----------------------Uruchamianie Apliakcji------------------------
+- wywołaj plik Histogram.exe z folderu \bin\x86_64\Release
+
+
+
+
+
+
+Linux:
+
+---------------------Kompilacja statycznych bibliotek OpenCV------------------------
+
+- sprawdź czy masz zainstalowany make – sprawdź komendą: which make lub make --version
+- sprawdź czy masz zainstalowany cmake – sprawdź komendą: which cmake lub cmake --version
+- sprawdź czy masz zainstalowany g++ – sprawdź komendą: which g++ lub g++ --version
+- sprawdź czy masz zainstalowany oraz skonfigurowanego git
+- z poziomu terminala uruchom skrypt: install_opnecv.sh z folderu OpenCV_Install (upewnij się, że skrypt ma odpowiednie uprawnienia wykonania komenda: ls -la)
+
+!!! Może pojawić się problem z długością ścieżki. Jeżeli instalacja się nie powiedzie przekopiuj skrypt np. do   	  !!!
+!!! folderu na pulpicie a następnie uruchom. Gdy instalacja się powiedzie (z poziomu innego folderu) wówczas przekopiuj   !!!
+!!! zawartość folderu "OpenCV_TO_COPY" do folderu "OpenCV" w folderze "OpenCl". Jeśli problem ze ścieżką nie wystąpił     !!!
+!!! to biblioteka zostanie zainstalowana automatycznie w odpowiednim miejscu						  !!!
+
+
+----------------------Budowanie plików CmakeFile------------------------
+cmake -G "Unix Makefiles" (z folderu OpenCL)
+
+----------------------Kompilacja projektu------------------------
+make (z folderu OpenCL)
+
+----------------------Uruchamianie Apliakcji------------------------
+- wywołaj plik Histogram z folderu \bin\x86_64\Release (upewnij się, że skrypt ma odpowiednie uprawnienia wykonania komenda: ls -la)
+
+
+
+
+!!! Parametryzacja oraz dodatkowe wskazówki zostały opisane w pliku Dokumentacja.txt !!! 
+
+
+----------------------Przykładowe zdjęcia w dużych rozdzielczościach------------------------
+https://aghedupl-my.sharepoint.com/:f:/g/personal/majkamil_student_agh_edu_pl/En_TXZxgkiVHutKbXzM_jrEB76oqZzbuE6qe_Wl_R0za1g?e=IZba7H
